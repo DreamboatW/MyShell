@@ -1,0 +1,57 @@
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <dirent.h>
+#include <unistd.h>
+#include <string.h>
+
+void del_stat(const char* name)
+{
+	DIR* fl = opendir(name);//打开指定目录，返回目录流（DIR*）
+	chdir(name);//进入当前目录中
+	
+	struct dirent* dir;//声明一个指向struct dirent结构体类型的指针
+	for( dir = readdir(fl); NULL!=dir;)//reddir返回值为srcDp目录流的下一个目录进入点
+	{
+		if(dir->d_type == DT_DIR) //如果当前类型是一个目录
+		{
+			if(strcmp(dir->d_name,"..")&&strcmp(dir->d_name,"."))
+				del_stat(dir->d_name); //递归
+		}
+		remove(dir->d_name);
+		dir = readdir(fl);//进入下一级目录
+	}
+	chdir("..");//所有目录都删除完毕后，回退到上一级目录，即根目录
+	remove(name);
+}
+
+int main(int argc,char *argv[])
+{
+	if(3 != argc)
+	{
+		printf("User:./rm -rf xxx\n");
+		return -1;
+	}
+	
+	struct stat sta;
+	if(0 > stat(argv[2],&sta))////把文件状态复制到st所指的结构体中
+	{
+		perror("open");
+		return -1;
+	}
+
+	if(!S_ISDIR(sta.st_mode))//判断是否是一个目录，如果是一个目录则返回1,否则返回0
+	{
+		char temp;
+		printf("该文件是一个文件，是否删除(y)、(n):");
+		scanf("%c",&temp);//读取用户输入如果用户选择不删除，则退出
+		if(temp == 'n')return 0;
+		remove(argv[2]);//如果用户选择删除，则删除该文件
+		return 0;
+	}
+	
+	del_stat(argv[2]); //如果是一个目录，则删除目录
+	return 0;
+}
+
